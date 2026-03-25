@@ -64,3 +64,26 @@ fn delete_and_type_of_behave_correctly() {
     assert_eq!(store.type_of("name"), "not found");
 }
 
+#[test]
+fn overwrite_changes_type_and_getters_follow() {
+    let mut store = TypedKvStore::new();
+    store.set("x", Value::Text("hi".to_string()));
+    assert_eq!(store.type_of("x"), "text");
+    assert_eq!(store.get_text("x"), Some("hi"));
+
+    store.set("x", Value::Number(42.0));
+    assert_eq!(store.type_of("x"), "number");
+    assert_eq!(store.get_text("x"), None);
+    assert_eq!(store.get_number("x"), Some(42.0));
+}
+
+#[test]
+fn empty_list_is_supported() {
+    let mut store = TypedKvStore::new();
+    store.set("tags", Value::List(vec![]));
+
+    assert_eq!(store.type_of("tags"), "list");
+    let list = store.get_list("tags").cloned();
+    assert_eq!(list, Some(vec![]));
+}
+
