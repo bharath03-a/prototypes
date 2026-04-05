@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = [
+    "storage/01_kv_store",
+    "storage/02_typed_kv",
+    "storage/03_iterator_scan",
+    "consensus/raft_simple",
+]
