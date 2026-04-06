@@ -11,6 +11,10 @@ name = "kv_store"
 version = "0.1.0"
 
 [[package]]
+name = "raft_cluster"
+version = "0.1.0"
+
+[[package]]
 name = "raft_single"
 version = "0.1.0"
 

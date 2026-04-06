@@ -5,7 +5,7 @@ enum NodeRole {
     Leader,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct LogEntry {
     term: u64,
     command: String,
@@ -81,4 +81,85 @@ fn main() {
     node.receive_heartbeat(2, 99);
     println!("node = {:?}", node);
     println!("committed_log = {:?}", node.committed_log());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scenario_1_fresh_node() {
+        let node = Node::new(1);
+        assert_eq!(node.role, NodeRole::Follower);
+        assert_eq!(node.current_term, 0);
+        assert!(node.log.is_empty());
+        assert_eq!(node.commit_index, 0);
+    }
+
+    #[test]
+    fn scenario_2_election_timeout() {
+        let mut node = Node::new(1);
+        node.trigger_election();
+        assert_eq!(node.role, NodeRole::Leader);
+        assert_eq!(node.current_term, 1);
+        assert_eq!(node.voted_for, Some(1));
+    }
+
+    #[test]
+    fn scenario_3_write_as_leader() {
+        let mut node = Node::new(1);
+        node.trigger_election();
+        assert_eq!(node.client_write("set x 10"), Ok(1));
+        assert_eq!(node.client_write("set y 20"), Ok(2));
+        assert_eq!(node.log.len(), 2);
+        assert_eq!(node.committed_log().len(), 2);
+        assert_eq!(node.committed_log()[0].command, "set x 10");
+        assert_eq!(node.committed_log()[1].command, "set y 20");
+    }
+
+    #[test]
+    fn scenario_4_write_without_being_leader() {
+        let mut node = Node::new(1);
+        assert_eq!(node.client_write("set x 10"), Err("not the leader"));
+    }
+
+    #[test]
+    fn scenario_5_receive_valid_heartbeat() {
+        let mut node = Node::new(1);
+        node.trigger_election();
+        assert_eq!(node.role, NodeRole::Leader);
+        assert!(node.receive_heartbeat(2, 99));
+        assert_eq!(node.role, NodeRole::Follower);
+        assert_eq!(node.current_term, 2);
+        assert_eq!(node.voted_for, None);
+    }
+
+    #[test]
+    fn scenario_6_receive_stale_heartbeat() {
+        let mut node = Node::new(1);
+        node.trigger_election();
+        node.trigger_election();
+        node.trigger_election();
+        assert_eq!(node.role, NodeRole::Leader);
+        assert_eq!(node.current_term, 3);
+        assert!(!node.receive_heartbeat(1, 99));
+        assert_eq!(node.role, NodeRole::Leader);
+        assert_eq!(node.current_term, 3);
+    }
+
+    #[test]
+    fn scenario_7_full_lifecycle() {
+        let mut node = Node::new(1);
+        node.trigger_election();
+        assert_eq!(node.client_write("set a 1"), Ok(1));
+        assert_eq!(node.client_write("set b 2"), Ok(2));
+        node.receive_heartbeat(5, 99);
+        assert_eq!(node.client_write("set c 3"), Err("not the leader"));
+        node.trigger_election();
+        assert_eq!(node.client_write("set c 3"), Ok(3));
+        assert_eq!(node.committed_log().len(), 3);
+        assert_eq!(node.committed_log()[0].command, "set a 1");
+        assert_eq!(node.committed_log()[1].command, "set b 2");
+        assert_eq!(node.committed_log()[2].command, "set c 3");
+    }
 }

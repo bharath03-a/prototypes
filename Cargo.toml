@@ -4,5 +4,5 @@ members = [
     "storage/01_kv_store",
     "storage/02_typed_kv",
     "storage/03_iterator_scan",
-    "consensus/01_raft_single",
+    "consensus/01_raft_single", "consensus/02_raft_cluster",
 ]
